@@ -1,6 +1,6 @@
 # 🏫 Bridges Note - MINEDU ESCALE Bridge API
 
-Microservicio y API REST en **Laravel 10** (PHP 8.3) diseñado para sincronizar, estructurar y servir el catálogo oficial de instituciones educativas (colegios) y la división política/geográfica (regiones, provincias y distritos) del Perú, consumiendo directamente la API pública oficial de **MINEDU / ESCALE** (*Estadística de la Calidad Educativa*).
+Microservicio y API REST en **Laravel 13** (PHP 8.3) diseñado para sincronizar, estructurar y servir el catálogo oficial de instituciones educativas (colegios) y la división política/geográfica (regiones, provincias y distritos) del Perú, consumiendo directamente la API pública oficial de **MINEDU / ESCALE** (*Estadística de la Calidad Educativa*).
 
 ---
 
@@ -53,8 +53,8 @@ Servir como un **puente de datos optimizado** para aplicaciones cliente (sistema
 
 ## 💻 Requisitos del Sistema
 
-- **PHP:** `8.3.x` (probado con 8.3.36). El `composer.json` admite desde `8.2`.
-- **Laravel Framework:** `10.50.x`
+- **PHP:** `8.3` o superior (probado con 8.3.36). Laravel 13 exige como mínimo PHP 8.3.
+- **Laravel Framework:** `13.x` (probado con 13.42.0)
 - **Gestor de Paquetes:** Composer 2.x
 - **Base de Datos:** MySQL 5.7+ / 8.0+ o MariaDB 10.3+
 - **Servidor Web Local:** Laragon (con PHP 8.3 Thread Safe - TS) o XAMPP con Apache.
@@ -288,7 +288,7 @@ brigesnote/
 
 ### 1. Error: `During inheritance of ArrayAccess: Return type of ... should either be compatible`
 - **Causa:** Tienes instaladas en `vendor/` las dependencias antiguas de Laravel 7, que no son compatibles con PHP 8.1 o superior.
-- **Solución:** Asegúrate de estar en la versión actual del repositorio (Laravel 10) y reinstala las dependencias con `composer install`.
+- **Solución:** Asegúrate de estar en la versión actual del repositorio (Laravel 13) y reinstala las dependencias con `composer install`.
 
 ### 2. Error: `No application encryption key has been specified`
 - **Causa:** La variable `APP_KEY` del archivo `.env` está vacía.
@@ -310,40 +310,55 @@ brigesnote/
 
 ## 🔼 Migración a PHP 8.3
 
-El proyecto se migró de **Laravel 7 / PHP 7.4** a **Laravel 10 / PHP 8.3**, porque Laravel 7 no funciona con PHP 8.1 o superior. El detalle completo (fases, decisiones técnicas, resultados de pruebas y deuda técnica) está en **[MIGRATION_PLAN.md](MIGRATION_PLAN.md)**.
+El proyecto se migró de **Laravel 7 / PHP 7.4** a **Laravel 13 / PHP 8.3**, porque Laravel 7 no funciona con PHP 8.1 o superior. La migración se hizo en dos etapas para reducir el riesgo:
+
+1. **Laravel 7 → 10:** cambios de código necesarios para que la aplicación arranque en PHP 8.3.
+2. **Laravel 10 → 13:** actualización a una versión con soporte de seguridad vigente (hasta el primer trimestre de 2028).
+
+El detalle completo (fases, decisiones técnicas, resultados de pruebas y deuda técnica) está en **[MIGRATION_PLAN.md](MIGRATION_PLAN.md)**.
 
 ### Resumen de cambios
 | Archivo | Cambio |
 |---|---|
-| `composer.json` | `laravel/framework` `^7.29` → `^10.0`; `php` → `^8.2`; actualización de `collision` y `phpunit`; eliminación de `fideloper/proxy`, `fruitcake/laravel-cors` y `facade/ignition`. |
+| `composer.json` | `laravel/framework` `^7.29` → `^13.0`; `php` → `^8.3`; `tinker` `^3.0`; `collision` `^8.6`; `phpunit` `^12.0`; eliminación de `fideloper/proxy`, `fruitcake/laravel-cors` y `facade/ignition`. |
 | `app/Http/Middleware/TrustProxies.php` | Usa el middleware integrado de Laravel en lugar de `fideloper/proxy`. |
 | `app/Http/Kernel.php` | CORS integrado de Laravel; `PreventRequestsDuringMaintenance`; `$middlewareAliases`. |
 | `app/Http/Middleware/PreventRequestsDuringMaintenance.php` | Reemplaza a `CheckForMaintenanceMode.php`. |
-| `phpunit.xml` | Formato de configuración de PHPUnit 10. |
+| `app/Http/Middleware/VerifyCsrfToken.php` | Extiende `PreventRequestForgery`, nuevo nombre del middleware CSRF en Laravel 13. |
+| `phpunit.xml` | Formato de configuración de PHPUnit 10+. |
 
 ### Comandos ejecutados
 ```bash
+# Etapa 1: Laravel 7 → 10
 git checkout -b migracion-php83
-composer update                 # con policy.advisories.block = false en composer.json
+composer update
 composer dump-autoload
+
+# Etapa 2: Laravel 10 → 13
+git checkout -b migracion-laravel13
+composer update -W
+composer dump-autoload
+
+# Puesta en marcha y pruebas
 php artisan key:generate
 php artisan config:clear
 php artisan migrate
+php artisan sync:locations
 php artisan test
+composer audit
 ```
 
 ### Verificación
 | Prueba | Resultado |
 |---|---|
 | `php -v` | PHP 8.3.36 ✅ |
-| `php artisan --version` | Laravel Framework 10.50.4 ✅ |
+| `php artisan --version` | Laravel Framework 13.42.0 ✅ |
+| `composer audit` | Sin vulnerabilidades ✅ |
 | Página de inicio en `http://brigesnote.test` | ✅ |
-| `php artisan migrate` (7 migraciones) | ✅ |
+| `php artisan migrate:status` (7 migraciones) | ✅ |
 | `php artisan test` (2 tests) | ✅ |
-| `php artisan sync:locations` | Sincroniza datos desde la API de MINEDU ✅ |
+| `php artisan sync:locations` | Sincroniza datos desde la API de MINEDU (prueba parcial: 2 regiones) ✅ |
 | `GET /api/regiones` | Devuelve las regiones sincronizadas ✅ |
-
-> ⚠️ Laravel 10 ya no recibe parches de seguridad. Se recomienda una migración posterior a Laravel 12 (ver `MIGRATION_PLAN.md`, sección 7).
 
 ---
 
