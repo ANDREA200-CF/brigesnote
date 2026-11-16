@@ -1,6 +1,6 @@
 # 🏫 Bridges Note - MINEDU ESCALE Bridge API
 
-Microservicio y API REST en **Laravel 7** diseñado para sincronizar, estructurar y servir el catálogo oficial de instituciones educativas (colegios) y la división política/geográfica (regiones, provincias y distritos) del Perú, consumiendo directamente la API pública oficial de **MINEDU / ESCALE** (*Estadística de la Calidad Educativa*).
+Microservicio y API REST en **Laravel 10** (PHP 8.3) diseñado para sincronizar, estructurar y servir el catálogo oficial de instituciones educativas (colegios) y la división política/geográfica (regiones, provincias y distritos) del Perú, consumiendo directamente la API pública oficial de **MINEDU / ESCALE** (*Estadística de la Calidad Educativa*).
 
 ---
 
@@ -15,6 +15,7 @@ Microservicio y API REST en **Laravel 7** diseñado para sincronizar, estructura
 7. [Documentación de la API REST](#-documentación-de-la-api-rest)
 8. [Estructura del Proyecto](#-estructura-del-proyecto)
 9. [Solución de Problemas Frecuentes](#-solución-de-problemas-frecuentes)
+10. [Migración a PHP 8.3](#-migración-a-php-83)
 
 ---
 
@@ -52,12 +53,11 @@ Servir como un **puente de datos optimizado** para aplicaciones cliente (sistema
 
 ## 💻 Requisitos del Sistema
 
-- **PHP:** `7.4.x` (Recomendado) o `8.0.x`.
-  > ⚠️ **Importante:** Laravel 7 no es compatible con PHP 8.1 o superior debido a cambios en la interfaz `ArrayAccess`.
-- **Laravel Framework:** `7.30.7`
+- **PHP:** `8.3.x` (probado con 8.3.36). El `composer.json` admite desde `8.2`.
+- **Laravel Framework:** `10.50.x`
 - **Gestor de Paquetes:** Composer 2.x
 - **Base de Datos:** MySQL 5.7+ / 8.0+ o MariaDB 10.3+
-- **Servidor Web Local:** Laragon (con PHP 7.4 Thread Safe - TS), XAMPP o `php artisan serve`.
+- **Servidor Web Local:** Laragon (con PHP 8.3 Thread Safe - TS) o XAMPP con Apache.
 
 ---
 
@@ -65,7 +65,7 @@ Servir como un **puente de datos optimizado** para aplicaciones cliente (sistema
 
 ### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/hubelsolis/brigesnote.git
+git clone https://github.com/ANDREA200-CF/brigesnote.git
 cd brigesnote
 ```
 
@@ -99,10 +99,14 @@ php artisan sync:locations
 ```
 
 ### 7. Iniciar el servidor
-```bash
-php artisan serve
-```
-La aplicación quedará disponible en `http://127.0.0.1:8000`.
+Este proyecto no tiene carpeta `public/`: el `index.php` y el `.htaccess` están en la raíz, por lo que **`php artisan serve` no funciona**.
+
+- **Con Laragon (recomendado):** presiona *Iniciar todo* y abre `http://brigesnote.test`.
+- **Con el servidor integrado de PHP:**
+  ```bash
+  php -S 127.0.0.1:8000 index.php
+  ```
+  La aplicación quedará disponible en `http://127.0.0.1:8000`.
 
 ---
 
@@ -283,16 +287,63 @@ brigesnote/
 ## 🛠️ Solución de Problemas Frecuentes
 
 ### 1. Error: `During inheritance of ArrayAccess: Return type of ... should either be compatible`
-- **Causa:** Estás ejecutando el proyecto con PHP 8.1, 8.2 o superior.
-- **Solución:** Cambia la versión de PHP en Laragon (o en tu servidor) a **PHP 7.4 (Thread Safe)** o **PHP 8.0**.
+- **Causa:** Tienes instaladas en `vendor/` las dependencias antiguas de Laravel 7, que no son compatibles con PHP 8.1 o superior.
+- **Solución:** Asegúrate de estar en la versión actual del repositorio (Laravel 10) y reinstala las dependencias con `composer install`.
 
-### 2. Error: `Service Apache can not start ... fcgid.conf` en Laragon
+### 2. Error: `No application encryption key has been specified`
+- **Causa:** La variable `APP_KEY` del archivo `.env` está vacía.
+- **Solución:** Ejecuta `php artisan key:generate` y luego `php artisan config:clear`.
+
+### 3. Error: `The provided cwd "...\public" does not exist` al ejecutar `php artisan serve`
+- **Causa:** El proyecto no tiene carpeta `public/`.
+- **Solución:** Usa el virtual host de Laragon o `php -S 127.0.0.1:8000 index.php` (ver paso 7 de la instalación).
+
+### 4. Error: `Service Apache can not start ... fcgid.conf` en Laragon
 - **Causa:** Descargaste la versión `nts` (Non-Thread Safe) de PHP en Windows.
 - **Solución:** Descarga e instala en Laragon la versión **Thread Safe (TS)** desde [windows.php.net](https://windows.php.net/downloads/releases/archives/).
 
-### 3. Error: `Base table or view not found: 1146 Table '...sessions' doesn't exist`
+### 5. Error: `Base table or view not found: 1146 Table '...sessions' doesn't exist`
 - **Causa:** En el archivo `.env` está configurado `SESSION_DRIVER=database` sin haber migrado la tabla de sesiones.
 - **Solución:** Cambia en `.env` a `SESSION_DRIVER=file`.
+
+---
+
+## 🔼 Migración a PHP 8.3
+
+El proyecto se migró de **Laravel 7 / PHP 7.4** a **Laravel 10 / PHP 8.3**, porque Laravel 7 no funciona con PHP 8.1 o superior. El detalle completo (fases, decisiones técnicas, resultados de pruebas y deuda técnica) está en **[MIGRATION_PLAN.md](MIGRATION_PLAN.md)**.
+
+### Resumen de cambios
+| Archivo | Cambio |
+|---|---|
+| `composer.json` | `laravel/framework` `^7.29` → `^10.0`; `php` → `^8.2`; actualización de `collision` y `phpunit`; eliminación de `fideloper/proxy`, `fruitcake/laravel-cors` y `facade/ignition`. |
+| `app/Http/Middleware/TrustProxies.php` | Usa el middleware integrado de Laravel en lugar de `fideloper/proxy`. |
+| `app/Http/Kernel.php` | CORS integrado de Laravel; `PreventRequestsDuringMaintenance`; `$middlewareAliases`. |
+| `app/Http/Middleware/PreventRequestsDuringMaintenance.php` | Reemplaza a `CheckForMaintenanceMode.php`. |
+| `phpunit.xml` | Formato de configuración de PHPUnit 10. |
+
+### Comandos ejecutados
+```bash
+git checkout -b migracion-php83
+composer update                 # con policy.advisories.block = false en composer.json
+composer dump-autoload
+php artisan key:generate
+php artisan config:clear
+php artisan migrate
+php artisan test
+```
+
+### Verificación
+| Prueba | Resultado |
+|---|---|
+| `php -v` | PHP 8.3.36 ✅ |
+| `php artisan --version` | Laravel Framework 10.50.4 ✅ |
+| Página de inicio en `http://brigesnote.test` | ✅ |
+| `php artisan migrate` (7 migraciones) | ✅ |
+| `php artisan test` (2 tests) | ✅ |
+| `php artisan sync:locations` | Sincroniza datos desde la API de MINEDU ✅ |
+| `GET /api/regiones` | Devuelve las regiones sincronizadas ✅ |
+
+> ⚠️ Laravel 10 ya no recibe parches de seguridad. Se recomienda una migración posterior a Laravel 12 (ver `MIGRATION_PLAN.md`, sección 7).
 
 ---
 

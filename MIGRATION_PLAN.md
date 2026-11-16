@@ -104,8 +104,9 @@ php artisan migrate
 | Página de inicio (`http://brigesnote.test`) | Carga correctamente ✅ |
 | `php artisan migrate` (7 migraciones: users, password_resets, failed_jobs, regions, provinces, districts, schools) | Todas ejecutadas ✅ |
 | `php artisan test` | 2 tests, 2 aprobados ✅ |
-| `php artisan sync:locations` (sincronización con API MINEDU) | ⏳ Pendiente |
-| Endpoints `/api/regiones`, `/api/provincias/{id}`, `/api/distritos/{id}`, `/api/colegios/{ubigeo}` | ⏳ Pendiente |
+| `php artisan sync:locations` (sincronización con API MINEDU) | Regiones, provincias y distritos descargados y guardados ✅ |
+| `GET /api/regiones` | Devuelve las regiones sincronizadas (01 Amazonas, 02 Áncash, …) ✅ |
+| Endpoints `/api/provincias/{id}`, `/api/distritos/{id}`, `/api/colegios/{ubigeo}` | ⏳ Pendiente |
 
 > **Nota:** `php artisan serve` no funciona en este proyecto porque no tiene carpeta `public/` (ver sección 6). Las pruebas se hicieron con el virtual host de Laragon.
 
